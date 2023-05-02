@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class PlayerController : MonoBehaviour
 {
@@ -8,12 +9,14 @@ public class PlayerController : MonoBehaviour
     public float jumpHeight = 5.0f;
     public float gravity = -30f;
     public float groundCheckDistance = 0.1f;
+    public float minMoveDistance = 0.1f;
 
-    public int carrotsCollected = 0; // Dodane
+    public int carrotsCollected = 0;
 
     private CharacterController _characterController;
     private Vector3 _velocity;
     private bool _isGrounded;
+    private Vector3 _targetPosition;
 
     private void Start()
     {
@@ -22,29 +25,34 @@ public class PlayerController : MonoBehaviour
         {
             _characterController = gameObject.AddComponent<CharacterController>();
         }
+        _targetPosition = transform.position;
     }
 
     private void Update()
     {
         _isGrounded = CheckIfGrounded();
-
-        float moveHorizontal = Input.GetAxis("Horizontal");
-        float moveVertical = Input.GetAxis("Vertical");
-
-        Vector3 movement = new Vector3(moveHorizontal, 0.0f, moveVertical);
-
         if (_isGrounded)
         {
             _velocity.y = 0f;
-
-            if (Input.GetButtonDown("Jump"))
-            {
-                _velocity.y += Mathf.Sqrt(jumpHeight * -2f * gravity);
-            }
         }
 
         _velocity.y += gravity * Time.deltaTime;
-        _characterController.Move((movement * speed + _velocity) * Time.deltaTime);
+
+        if (Vector3.Distance(transform.position, _targetPosition) > minMoveDistance)
+        {
+            Vector3 direction = (_targetPosition - transform.position).normalized;
+            _characterController.Move((direction * speed + _velocity) * Time.deltaTime);
+        }
+
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                _targetPosition = new Vector3(hit.point.x, transform.position.y, hit.point.z);
+            }
+        }
     }
 
     private bool CheckIfGrounded()
@@ -59,20 +67,16 @@ public class PlayerController : MonoBehaviour
             Destroy(gameObject);
             Debug.Log("Gracz zgin¹³!");
         }
-        else if (other.gameObject.CompareTag("Carrot")) // Dodane
+        else if (other.gameObject.CompareTag("Carrot"))
         {
             AddCarrot();
             Destroy(other.gameObject);
         }
     }
 
-    public void AddCarrot() // Dodane
+    public void AddCarrot()
     {
         carrotsCollected++;
         // Aktualizuj interfejs u¿ytkownika
     }
 }
-
-
-
-
